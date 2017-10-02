@@ -13,7 +13,8 @@
 #define NEW_WINDOW		6
 
 
-const int NUM = 70;
+const int GraphWidth = 1010;
+const int GraphHeight = 510;
 
 // Prototypes for functions below
 LPCTSTR getFileName();
@@ -26,6 +27,7 @@ int newWindow(HWND hwnd);
 LRESULT CALLBACK childProc(HWND, UINT, WPARAM, LPARAM);
 
 bool isLoaded = false;
+
 HBITMAP hBitmap;
 HINSTANCE hinst;
 HWND child;
@@ -340,73 +342,33 @@ int saveBitmap(HBITMAP H) {
 	return 0;
 }
 
-double **x; // массив данных
-			// Задание исходных данных для графика
-			// (двумерный массив, может содержать несколько рядов данных)
-double ** getData(int n)
-{
-	double **f;
-	f = new double*[2];
-	f[0] = new double[n];
-	f[1] = new double[n];
-	for (int i = 0; i<n; i++)
-	{
-		double x = (double)i * 0.1;
-		f[0][i] = x;
-		f[1][i] = sin(x);
-	}
-	return f;
-}
 
 // Функция рисования графика
 void DrawGraph(HDC hdc, RECT rectClient,
-	double **x, // массив данных
-	int n, // количество точек
 	int numrow = 1) // количество рядов данных (по умолчанию 1)
 {
 	double OffsetY, OffsetX;
 	double MAX_X, MAX_Y;
 	double ScaleX, ScaleY;
-	double min, max;
 	int height, width;
 	int X, Y; // координаты в окне (в px)
 	HPEN hpen;
-	height = rectClient.bottom - rectClient.top;
-	width = rectClient.right - rectClient.left;
-	// Область допустимых значений X
-	min = x[0][0];
-	max = x[0][0];
-	for (int i = 0; i<n; i++)
-	{
-		if (x[0][i] < min) min = x[0][i];
-		if (x[0][i] > max) max = x[0][i];
-	}
-	double temp = max - min;
-	MAX_X = max - min;
-	OffsetX = min*width / MAX_X; // смещение X
-	ScaleX = (double)width / MAX_X; // масштабный коэффициент X
-									// Область допустимых значений Y
-	min = x[1][0];
-	max = x[1][0];
-	for (int i = 0; i<n; i++)
-	{
-		for (int j = 1; j <= numrow; j++)
-		{
-			if (x[j][i] < min) min = x[j][i];
-			if (x[j][i] > max) max = x[j][i];
-		}
-	}
-	MAX_Y = max - min;
-	OffsetY = max*height / (MAX_Y); // смещение Y
-	ScaleY = (double)height / MAX_Y; // масштабный коэффициент Y
+	height = rectClient.bottom - rectClient.top; // высота окна
+	width = rectClient.right - rectClient.left; // ширина окна
+
+	OffsetX = 100; // смещение X
+	OffsetY = GraphHeight - 100; // смещение Y
 									 // Отрисовка осей координат
 	hpen = CreatePen(PS_SOLID, 0, 0); // черное перо 1px
 	SelectObject(hdc, hpen);
+	
 	MoveToEx(hdc, 0, OffsetY, 0); // перемещение в точку (0;OffsetY)
 	LineTo(hdc, width, OffsetY); // рисование горизонтальной оси
 	MoveToEx(hdc, OffsetX, 0, 0); // перемещение в точку (OffsetX;0)
 	LineTo(hdc, OffsetX, height); // рисование вертикальной оси (не видна)
 	DeleteObject(hpen); // удаление черного пера
+
+	/*
 						// Отрисовка графика функции
 	int color = 0xFF; // красное перо для первого ряда данных
 	for (int j = 1; j <= numrow; j++)
@@ -424,7 +386,7 @@ void DrawGraph(HDC hdc, RECT rectClient,
 		}
 		color = color << 8; // изменение цвета пера для следующего ряда
 		DeleteObject(hpen); // удаление текущего пера
-	}
+	}*/
 }
 
 
@@ -437,12 +399,12 @@ LRESULT CALLBACK ChildProc(HWND hwnd, UINT Message, WPARAM wparam, LPARAM lparam
 	switch (Message)
 	{
 	case WM_PAINT:
-		hdc = BeginPaint(child, &ps);
-		DrawGraph(hdc, ps.rcPaint, x, NUM); // построение графика
-											// Вывод текста y=sin(x)
-		SetTextColor(hdc, 0x00FF0000); // синий цвет букв
-		TextOut(hdc, 10, 20, L"y=sin(x)", 8);
-		EndPaint(child, &ps);
+			hdc = BeginPaint(child, &ps);
+			DrawGraph(hdc, ps.rcPaint); // построение графика
+												// Вывод текста y=sin(x)
+			SetTextColor(hdc, 0x00FF0000); // синий цвет букв
+			TextOut(hdc, 10, 20, L"y=sin(x)", 8);
+			EndPaint(child, &ps);
 		break;
 	case WM_DESTROY:
 		return 0;
@@ -456,7 +418,6 @@ LRESULT CALLBACK ChildProc(HWND hwnd, UINT Message, WPARAM wparam, LPARAM lparam
 
 int newWindow(HWND hwnd) {
 	WNDCLASS w;
-	x = getData(NUM); // задание исходны данных
 	memset(&w, 0, sizeof(WNDCLASS));
 	w.lpfnWndProc = ChildProc;
 	w.hInstance = hinst;
@@ -465,7 +426,7 @@ int newWindow(HWND hwnd) {
 	w.hCursor = LoadCursor(NULL, IDC_CROSS);
 	RegisterClass(&w);
 	child = CreateWindowEx(0, L"ChildWClass", (LPCTSTR)NULL,
-		WS_CHILD | WS_OVERLAPPEDWINDOW, 500, 300, 500, 380, hwnd, NULL, hinst, NULL);
+		WS_CHILD | WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, GraphWidth, GraphHeight, hwnd, NULL, hinst, NULL);
 	ShowWindow(child, SW_NORMAL);
 	UpdateWindow(child);
 	return 0;
