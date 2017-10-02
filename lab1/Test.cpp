@@ -10,6 +10,10 @@
 #define APPLY_BITBLT	3
 #define APPLY_SETPIXEL	4
 #define START_TESTS		5
+#define NEW_WINDOW		6
+
+
+const int NUM = 70;
 
 // Prototypes for functions below
 LPCTSTR getFileName();
@@ -18,9 +22,13 @@ LRESULT CALLBACK handleWindowEvents(HWND, UINT, WPARAM, LPARAM);
 void setPixelDisplay(HWND hwnd, HBITMAP hBitmap);
 void setBlt(HWND hWnd, HBITMAP hBitmap);
 void runTests(HWND hwnd);
+int newWindow(HWND hwnd);
+LRESULT CALLBACK childProc(HWND, UINT, WPARAM, LPARAM);
 
 bool isLoaded = false;
 HBITMAP hBitmap;
+HINSTANCE hinst;
+HWND child;
 
 int WINAPI WinMain(HINSTANCE hInstance, //дескриптор экземпляра приложения
 	HINSTANCE hPrevInstance, // в Win32 не используется
@@ -30,6 +38,7 @@ int WINAPI WinMain(HINSTANCE hInstance, //дескриптор экземпля�
 	WNDCLASS WndClass; // создаём экземпляр, для обращения к членам класса WNDCLASS
 	MSG Msg; // создём экземпляр структуры MSG для обработки сообщений
 	wchar_t szClassName[] = L"Lab1"; // строка с именем класса
+	hinst = hInstance;
 
 	// Set window attributes
 	WndClass.style = CS_HREDRAW | CS_VREDRAW; // стиль класса окошка (Перерисовка всего окна при изменении высоты или ширины)
@@ -68,6 +77,7 @@ int WINAPI WinMain(HINSTANCE hInstance, //дескриптор экземпля�
 	AppendMenu(MainMenu, MF_STRING, APPLY_BITBLT, TEXT("Change color by BitBlt"));
 	AppendMenu(MainMenu, MF_STRING, START_TESTS, TEXT("Run tests"));
 	AppendMenu(MainMenu, MF_STRING, APPLY_SETPIXEL, TEXT("GetPixel"));
+	AppendMenu(MainMenu, MF_STRING, NEW_WINDOW, TEXT("New Window"));
 	SetMenu(hWnd, MainMenu);
 
 	if (!hWnd) {
@@ -124,6 +134,10 @@ LRESULT CALLBACK handleWindowEvents(HWND hwnd, // дескриптор окош�
 			runTests(hwnd);
 			break;
 		}
+		if (LOWORD(wParam) == NEW_WINDOW) { // новое окошко
+			newWindow(hwnd);
+			break;
+		}
 		if (LOWORD(wParam) == APPLY_BITBLT) { // смена цветов
 			if (!isLoaded) {
 				break;
@@ -156,7 +170,7 @@ void runTests(HWND hwnd) {
 	time_t stats[20];
 	DOUBLE y[10];
 	for (int type = 0; type<2; type++) {
-		printf(type ? "pixel:  " : "bitblt: ");
+		//printf(type ? "pixel:  " : "bitblt: ");
 		for (int i = 1; i <= 10; i++) {
 			cpy = (HBITMAP)CopyImage(hBitmap, IMAGE_BITMAP, i * 200, i * 200, 0);
 			start_time = time(NULL);
@@ -171,10 +185,10 @@ void runTests(HWND hwnd) {
 			stats[type * 10 + (i - 1)] = time(NULL) - start_time;
 
 
-			printf("%02d\t", stats[type * 10 + (i - 1)]);
+			//printf("%02d\t", stats[type * 10 + (i - 1)]);
 			DeleteObject(cpy);
 		}
-		printf("\n");
+		//printf("\n");
 	}
 	for (int i = 0; i < 10; i++){
 		y[i] = stats[i] / stats[i + 10] * 100;
@@ -216,7 +230,6 @@ void setPixelDisplay(HWND hwnd, HBITMAP hBitmap) {
 		}
 	}
 	SelectObject(hCompatibleDC, hOldBitmap);
-	saveBitmap(hBitmap);
 	InvalidateRect(hwnd, NULL, TRUE);
 	DeleteDC(hCompatibleDC);
 	DeleteObject(hOldBitmap);
@@ -326,6 +339,140 @@ int saveBitmap(HBITMAP H) {
 
 	return 0;
 }
+
+double **x; // массив данных
+			// Задание исходных данных для графика
+			// (двумерный массив, может содержать несколько рядов данных)
+double ** getData(int n)
+{
+	double **f;
+	f = new double*[2];
+	f[0] = new double[n];
+	f[1] = new double[n];
+	for (int i = 0; i<n; i++)
+	{
+		double x = (double)i * 0.1;
+		f[0][i] = x;
+		f[1][i] = sin(x);
+	}
+	return f;
+}
+
+// Функция рисования графика
+void DrawGraph(HDC hdc, RECT rectClient,
+	double **x, // массив данных
+	int n, // количество точек
+	int numrow = 1) // количество рядов данных (по умолчанию 1)
+{
+	double OffsetY, OffsetX;
+	double MAX_X, MAX_Y;
+	double ScaleX, ScaleY;
+	double min, max;
+	int height, width;
+	int X, Y; // координаты в окне (в px)
+	HPEN hpen;
+	height = rectClient.bottom - rectClient.top;
+	width = rectClient.right - rectClient.left;
+	// Область допустимых значений X
+	min = x[0][0];
+	max = x[0][0];
+	for (int i = 0; i<n; i++)
+	{
+		if (x[0][i] < min) min = x[0][i];
+		if (x[0][i] > max) max = x[0][i];
+	}
+	double temp = max - min;
+	MAX_X = max - min;
+	OffsetX = min*width / MAX_X; // смещение X
+	ScaleX = (double)width / MAX_X; // масштабный коэффициент X
+									// Область допустимых значений Y
+	min = x[1][0];
+	max = x[1][0];
+	for (int i = 0; i<n; i++)
+	{
+		for (int j = 1; j <= numrow; j++)
+		{
+			if (x[j][i] < min) min = x[j][i];
+			if (x[j][i] > max) max = x[j][i];
+		}
+	}
+	MAX_Y = max - min;
+	OffsetY = max*height / (MAX_Y); // смещение Y
+	ScaleY = (double)height / MAX_Y; // масштабный коэффициент Y
+									 // Отрисовка осей координат
+	hpen = CreatePen(PS_SOLID, 0, 0); // черное перо 1px
+	SelectObject(hdc, hpen);
+	MoveToEx(hdc, 0, OffsetY, 0); // перемещение в точку (0;OffsetY)
+	LineTo(hdc, width, OffsetY); // рисование горизонтальной оси
+	MoveToEx(hdc, OffsetX, 0, 0); // перемещение в точку (OffsetX;0)
+	LineTo(hdc, OffsetX, height); // рисование вертикальной оси (не видна)
+	DeleteObject(hpen); // удаление черного пера
+						// Отрисовка графика функции
+	int color = 0xFF; // красное перо для первого ряда данных
+	for (int j = 1; j <= numrow; j++)
+	{
+		hpen = CreatePen(PS_SOLID, 2, color); // формирование пера 2px
+		SelectObject(hdc, hpen);
+		X = (int)(OffsetX + x[0][0] * ScaleX); // начальная точка графика
+		Y = (int)(OffsetY - x[j][0] * ScaleY);
+		MoveToEx(hdc, X, Y, 0); // перемещение в начальную точку
+		for (int i = 0; i<n; i++)
+		{
+			X = OffsetX + x[0][i] * ScaleX;
+			Y = OffsetY - x[j][i] * ScaleY;
+			LineTo(hdc, X, Y);
+		}
+		color = color << 8; // изменение цвета пера для следующего ряда
+		DeleteObject(hpen); // удаление текущего пера
+	}
+}
+
+
+
+
+LRESULT CALLBACK ChildProc(HWND hwnd, UINT Message, WPARAM wparam, LPARAM lparam)
+{
+	HDC hdc;
+	PAINTSTRUCT ps;
+	switch (Message)
+	{
+	case WM_PAINT:
+		hdc = BeginPaint(child, &ps);
+		DrawGraph(hdc, ps.rcPaint, x, NUM); // построение графика
+											// Вывод текста y=sin(x)
+		SetTextColor(hdc, 0x00FF0000); // синий цвет букв
+		TextOut(hdc, 10, 20, L"y=sin(x)", 8);
+		EndPaint(child, &ps);
+		break;
+	case WM_DESTROY:
+		return 0;
+		break;
+	default:
+		return DefWindowProc(hwnd, Message, wparam, lparam);
+	}
+	return 0;
+}
+
+
+int newWindow(HWND hwnd) {
+	WNDCLASS w;
+	x = getData(NUM); // задание исходны данных
+	memset(&w, 0, sizeof(WNDCLASS));
+	w.lpfnWndProc = ChildProc;
+	w.hInstance = hinst;
+	w.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+	w.lpszClassName = L"ChildWClass";
+	w.hCursor = LoadCursor(NULL, IDC_CROSS);
+	RegisterClass(&w);
+	child = CreateWindowEx(0, L"ChildWClass", (LPCTSTR)NULL,
+		WS_CHILD | WS_OVERLAPPEDWINDOW, 500, 300, 500, 380, hwnd, NULL, hinst, NULL);
+	ShowWindow(child, SW_NORMAL);
+	UpdateWindow(child);
+	return 0;
+}
+
+
+
 
 
 
