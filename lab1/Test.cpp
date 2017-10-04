@@ -13,8 +13,8 @@
 #define NEW_WINDOW		6
 
 
-const int GraphWidth = 1010;
-const int GraphHeight = 510;
+const int GraphWidth = 1050;
+const int GraphHeight = 650;
 
 // Prototypes for functions below
 LPCTSTR getFileName();
@@ -31,6 +31,8 @@ bool isLoaded = false;
 HBITMAP hBitmap;
 HINSTANCE hinst;
 HWND child;
+int stats[20];
+int max = 0;
 
 int WINAPI WinMain(HINSTANCE hInstance, //дескриптор экземпляра приложения
 	HINSTANCE hPrevInstance, // в Win32 не используется
@@ -133,7 +135,11 @@ LRESULT CALLBACK handleWindowEvents(HWND hwnd, // дескриптор окош�
 			break;
 		}
 		if (LOWORD(wParam) == START_TESTS) { // вызов тестирования
+			if (!isLoaded) {
+				break;
+			}
 			runTests(hwnd);
+			newWindow(hwnd);
 			break;
 		}
 		if (LOWORD(wParam) == NEW_WINDOW) { // новое окошко
@@ -168,14 +174,11 @@ LRESULT CALLBACK handleWindowEvents(HWND hwnd, // дескриптор окош�
 
 void runTests(HWND hwnd) {
 	HBITMAP cpy;
-	time_t start_time;
-	time_t stats[20];
-	DOUBLE y[10];
+	UINT32  start_time;
 	for (int type = 0; type<2; type++) {
-		//printf(type ? "pixel:  " : "bitblt: ");
 		for (int i = 1; i <= 10; i++) {
 			cpy = (HBITMAP)CopyImage(hBitmap, IMAGE_BITMAP, i * 200, i * 200, 0);
-			start_time = time(NULL);
+			start_time = GetTickCount();
 			switch (type) {
 			case 0:
 				setBlt(hwnd, cpy);
@@ -184,16 +187,10 @@ void runTests(HWND hwnd) {
 				setPixelDisplay(hwnd, cpy);
 				break;
 			}
-			stats[type * 10 + (i - 1)] = time(NULL) - start_time;
-
-
-			//printf("%02d\t", stats[type * 10 + (i - 1)]);
+			stats[type * 10 + (i - 1)] = GetTickCount() - start_time;
+			max = max < stats[type * 10 + (i - 1)] ? stats[type * 10 + (i - 1)] : max;
 			DeleteObject(cpy);
 		}
-		//printf("\n");
-	}
-	for (int i = 0; i < 10; i++){
-		y[i] = stats[i] / stats[i + 10] * 100;
 	}
 }
 
@@ -212,9 +209,11 @@ void setBlt(HWND hwnd, // дескриптор окошка
 	BitBlt(hCompatibleDC, 0, 0, bm.bmWidth, bm.bmHeight, hCompatibleDC, 0, 0, MERGECOPY); // изменение цвета
 	SetDCBrushColor(hCompatibleDC, RGB(0, 64, 0)); // устанавливаем цвет кисти убирающий зелённый цвет
 	BitBlt(hCompatibleDC, 0, 0, bm.bmWidth, bm.bmHeight, hCompatibleDC, 0, 0, PATINVERT); // изменение цвета
+	
+	InvalidateRect(hwnd, NULL, TRUE);
 	SelectObject(hCompatibleDC, hOldBitmap);
 	DeleteDC(hCompatibleDC);
-	InvalidateRect(hwnd, NULL, TRUE);
+	
 
 }
 
@@ -352,41 +351,72 @@ void DrawGraph(HDC hdc, RECT rectClient,
 	double ScaleX, ScaleY;
 	int height, width;
 	int X, Y; // координаты в окне (в px)
-	HPEN hpen;
+	HPEN hpen; 
 	height = rectClient.bottom - rectClient.top; // высота окна
 	width = rectClient.right - rectClient.left; // ширина окна
 
-	OffsetX = 100; // смещение X
-	OffsetY = GraphHeight - 100; // смещение Y
+	OffsetX = 50; // смещение X
+	OffsetY = GraphHeight - OffsetX - 50; // смещение Y
 									 // Отрисовка осей координат
 	hpen = CreatePen(PS_SOLID, 0, 0); // черное перо 1px
 	SelectObject(hdc, hpen);
 	
 	MoveToEx(hdc, 0, OffsetY, 0); // перемещение в точку (0;OffsetY)
-	LineTo(hdc, width, OffsetY); // рисование горизонтальной оси
+	LineTo(hdc, GraphWidth, OffsetY); // рисование горизонтальной оси
 	MoveToEx(hdc, OffsetX, 0, 0); // перемещение в точку (OffsetX;0)
-	LineTo(hdc, OffsetX, height); // рисование вертикальной оси (не видна)
-	DeleteObject(hpen); // удаление черного пера
+	LineTo(hdc, OffsetX, GraphHeight); // рисование вертикальной оси 
 
-	/*
-						// Отрисовка графика функции
-	int color = 0xFF; // красное перо для первого ряда данных
-	for (int j = 1; j <= numrow; j++)
+	for (int i = 1; i <= 10; i++) {
+		MoveToEx(hdc, OffsetX + 100*i, OffsetY - 5, 0);
+		LineTo(hdc, OffsetX + 100*i, OffsetY + 5);
+	}
+
 	{
-		hpen = CreatePen(PS_SOLID, 2, color); // формирование пера 2px
-		SelectObject(hdc, hpen);
-		X = (int)(OffsetX + x[0][0] * ScaleX); // начальная точка графика
-		Y = (int)(OffsetY - x[j][0] * ScaleY);
-		MoveToEx(hdc, X, Y, 0); // перемещение в начальную точку
-		for (int i = 0; i<n; i++)
-		{
-			X = OffsetX + x[0][i] * ScaleX;
-			Y = OffsetY - x[j][i] * ScaleY;
-			LineTo(hdc, X, Y);
-		}
-		color = color << 8; // изменение цвета пера для следующего ряда
-		DeleteObject(hpen); // удаление текущего пера
-	}*/
+		SetTextColor(hdc, 0xFFFFFF00);
+		TextOut(hdc, OffsetX - 10, GraphHeight - 40 - OffsetX, L"0", 1);
+		TextOut(hdc, (GraphWidth/10 + OffsetX - 15), GraphHeight - 40 - OffsetX, L"200", 3);
+		TextOut(hdc, (GraphWidth / 10 * 2 + OffsetX - 20), GraphHeight - 40 - OffsetX, L"400", 3);
+		TextOut(hdc, (GraphWidth / 10 * 3 + OffsetX - 25), GraphHeight - 40 - OffsetX, L"600", 3);
+		TextOut(hdc, (GraphWidth / 10 * 4 + OffsetX - 30), GraphHeight - 40 - OffsetX, L"800", 3);
+		TextOut(hdc, (GraphWidth / 10 * 5 + OffsetX - 40), GraphHeight - 40 - OffsetX, L"1000", 4);
+		TextOut(hdc, (GraphWidth / 10 * 6 + OffsetX - 45), GraphHeight - 40 - OffsetX, L"1200", 4);
+		TextOut(hdc, (GraphWidth / 10 * 7 + OffsetX - 50), GraphHeight - 40 - OffsetX, L"1400", 4);
+		TextOut(hdc, (GraphWidth / 10 * 8 + OffsetX - 55), GraphHeight - 40 - OffsetX, L"1600", 4);
+		TextOut(hdc, (GraphWidth / 10 * 9 + OffsetX - 60), GraphHeight - 40 - OffsetX, L"1800", 4);
+		TextOut(hdc, (GraphWidth + OffsetX - 65), GraphHeight - 40 - OffsetX, L"2000", 4);
+	}
+	
+
+	max = max*1.1;
+
+	
+
+	DeleteObject(hpen); // удаление черного пера
+	hpen = CreatePen(PS_SOLID, 0, 0xFF); // Красное перо
+	SelectObject(hdc, hpen);
+
+	for (int i = 0; i < 9; i++) {
+		int y = OffsetY - OffsetY* stats[i] / max;
+		MoveToEx(hdc, OffsetX + 100 * i, y, 0);
+		y = OffsetY - OffsetY* stats[i + 1] / max;
+		LineTo(hdc, OffsetX + 100 * (i + 1), y);
+	}
+	DeleteObject(hpen); // удаление красного пера
+	hpen = CreatePen(PS_SOLID, 0, RGB(0, 255, 0)); // Зелёное перо
+	SelectObject(hdc, hpen);
+	for (int i = 0; i < 9; i++) {
+		double y = OffsetY - OffsetY* stats[i+10] / max;
+		MoveToEx(hdc, OffsetX + 100 * i , (int)y, 0);
+		y = OffsetY- OffsetY* stats[i + 11] / max;
+		LineTo(hdc, OffsetX + 100 * (i + 1), (int)y);
+		wchar_t m_reportFileName[256];
+		swprintf_s(m_reportFileName, L"%d", stats[i + 11]);
+		TextOut(hdc, 10, y-10, m_reportFileName, 4);
+	}
+
+
+
+	
 }
 
 
@@ -401,9 +431,6 @@ LRESULT CALLBACK ChildProc(HWND hwnd, UINT Message, WPARAM wparam, LPARAM lparam
 	case WM_PAINT:
 			hdc = BeginPaint(child, &ps);
 			DrawGraph(hdc, ps.rcPaint); // построение графика
-												// Вывод текста y=sin(x)
-			SetTextColor(hdc, 0x00FF0000); // синий цвет букв
-			TextOut(hdc, 10, 20, L"y=sin(x)", 8);
 			EndPaint(child, &ps);
 		break;
 	case WM_DESTROY:
