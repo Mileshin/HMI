@@ -1,6 +1,5 @@
 ﻿#include <windows.h>
 #include <time.h>
-#include <stdio.h>
 #include <iostream> 
 #include <fstream>
 
@@ -267,7 +266,7 @@ LPCTSTR SaveAs() {
 	ofn.lpstrInitialDir = NULL;
 	ofn.Flags = OFN_PATHMUSTEXIST ;
 
-	if (GetOpenFileName(&ofn)) {
+	if (GetSaveFileName(&ofn)) {
 		return ofn.lpstrFile;
 	}
 	else { return NULL; }
