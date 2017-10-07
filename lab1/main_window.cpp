@@ -62,7 +62,7 @@ int WINAPI WinMain(HINSTANCE hInstance, // A handle to the current instance of t
 	// Create window
 	hWnd = CreateWindow(szClassName, // Class name
 		L"Image", // window name
-		WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,  // The style of the window being created
+		WS_OVERLAPPEDWINDOW | WS_HSCROLL | WS_VSCROLL, CW_USEDEFAULT,  // The style of the window being created
 		CW_USEDEFAULT, CW_USEDEFAULT, // position
 		CW_USEDEFAULT, NULL, // width and height
 		NULL, // no parent

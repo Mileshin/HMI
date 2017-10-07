@@ -29,7 +29,7 @@ int WINAPI WinMain(HINSTANCE hInstance, // A handle to the current instance of t
 	HWND hWnd;
 	WNDCLASS WndClass;
 	MSG Msg;
-	wchar_t szClassName[] = L"Lab1"; // Class  name
+	wchar_t szClassName[] = L"Lab2"; // Class  name
 	hinst = hInstance;
 
 	// Set window attributes
