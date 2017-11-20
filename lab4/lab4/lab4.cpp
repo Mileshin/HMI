@@ -89,25 +89,14 @@ void moveWindow(HWND hWnd, bool Right, RECT wRect, RECT dRect) {
 			speed = dRect.right - wRect.right;
 			reversed = !reversed;
 		}
-		SetWindowPos(hWnd,
-			HWND_TOPMOST,
-			wRect.left + speed,
-			wRect.top, 
-			0,0,
-			SWP_NOSIZE);
+		SetWindowPos(hWnd,HWND_TOPMOST,wRect.left + speed,wRect.top, 0,0,SWP_NOSIZE);
 	}
-	else
-	{
+	else{
 		if (wRect.left - speed <= dRect.left) {
 			speed = -(dRect.left - wRect.left);
 			reversed = !reversed;
 		}
-		SetWindowPos(hWnd,
-			HWND_TOPMOST,
-			wRect.left - speed,
-			wRect.top,
-			0,0,
-			SWP_NOSIZE);
+		SetWindowPos(hWnd,HWND_TOPMOST,wRect.left - speed,wRect.top,0,0,SWP_NOSIZE);
 	}
 	if (speed != oldspeed) speed = oldspeed;
 }
@@ -123,14 +112,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam)
 		points[0].x = 250;
 		points[0].y = 100;
 
-
 		points[1].x = 0;
 		points[1].y = 100;
 
-
 		points[3].x = 300;
 		points[3].y = 0;
-
 
 		points[2].x = 50;
 		points[2].y = 0;
